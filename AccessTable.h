@@ -12,22 +12,24 @@
 #define MAX_USER_SIZE    248
 #define MAX_EEPROM_SIZE 1024
 
-const int userStartAddr = 0;
-const int authStartAddr = userStartAddr + 4 * MAX_USER_SIZE;
-const int userCountAddr = MAX_EEPROM_SIZE - 2;
+const unsigned int userStartAddr = 0;
+const unsigned int authStartAddr = userStartAddr + 4 * MAX_USER_SIZE;
+const unsigned int userCountAddr = MAX_EEPROM_SIZE - 2;
 
 class AccessTable {
   public:
     unsigned int getNumUsers();
-    int setNumUsers(unsigned int numUsers);
     
-    int setAuth(int tableIndex, byte auth);
-    int setUserAuth(byte *tad_id, byte auth);
-    int getUserIndex(byte *tad_id, int tagLen = 4);
-    int addUser(byte *tad_id, byte auth);
+    int getUserAuth(byte *tag_id);
+    int addUser(byte *tag_id, byte auth);
     int clearTable();
+    void print_table();
     
   private:
+    int setNumUsers(unsigned int numUsers);
+    int setAuth(int tableIndex, byte auth);
+    int getAuth(int tableIndex);
+    int getUserIndex(byte *tag_id);
 };
 
 

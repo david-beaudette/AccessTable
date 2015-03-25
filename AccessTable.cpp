@@ -142,28 +142,28 @@ int AccessTable::setAuth(int tableIndex, byte auth) {
     return -1;   
   }
   unsigned int relAddr = tableIndex >> 3;
-  Serial.print("-- Setting user auth at address ");
-  Serial.print(authStartAddr + relAddr);
+  //Serial.print("-- Setting user auth at address ");
+  //Serial.print(authStartAddr + relAddr);
   byte tableByte = EEPROM.read(authStartAddr + relAddr);
-  Serial.print(", memory content is 0x");
-  Serial.print(tableByte, HEX);
-  Serial.print(", the mask used is 0x");
+  //Serial.print(", memory content is 0x");
+  //Serial.print(tableByte, HEX);
+  //Serial.print(", the mask used is 0x");
   byte byteMask  = 1 << (tableIndex%8);
-  Serial.print(byteMask, HEX);
+  //Serial.print(byteMask, HEX);
   byte curAuth = (tableByte & byteMask) > 0;
-  Serial.print(", user auth is currently ");
-  Serial.print(curAuth);
+  //Serial.print(", user auth is currently ");
+  //Serial.print(curAuth);
   if(auth == curAuth) {
     // No change
-    Serial.println(", returning 0 (no change).");
+    //Serial.println(", returning 0 (no change).");
     return 0;
   }
   else {
     // Change authorization (bitwise xor used)
-    Serial.print(", updating the auth byte with 0x");
+    //Serial.print(", updating the auth byte with 0x");
     tableByte = tableByte ^ byteMask;
-    Serial.print(tableByte, HEX);
-    Serial.println(", returning 1 (authorization updated).");
+    //Serial.print(tableByte, HEX);
+    //Serial.println(", returning 1 (authorization updated).");
     EEPROM.write(authStartAddr + relAddr, tableByte);
     return 1;
   } 

@@ -49,7 +49,7 @@ int AccessTable::addUser(byte *tag_id, byte auth) {
   // Increase table size (not checking for table full again)
   this->setNumUsers(numUsers + 1);  
   
-  return 0;
+  return 1;
 }
 
 /*

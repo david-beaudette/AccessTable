@@ -1,20 +1,20 @@
-/*
+/**
   AccessTable.cpp
   
   Defines the list of user ID's and associated authorisations.
- */
+ **/
 
 #include "AccessTable.h"
 
-/*
+/**
   Check if user is authorized from its tag ID.
   
   @param  tag_id  user tag (4 bytes)
   
-  @return -1 invalid table index\n
+  @return -1 user not found\n
            0 user unauthorized\n
            1 user authorized
-*/
+**/
 int AccessTable::getUserAuth(byte *tag_id) {
   // Check for user tag in table
   int tableIndex = this->getUserIndex(tag_id);
@@ -22,13 +22,29 @@ int AccessTable::getUserAuth(byte *tag_id) {
   return this->getAuth(tableIndex);
 }
 
-/*
+/**
+  Set user authorization from its tag ID.
+  
+  @param  tag_id  user tag (4 bytes)
+  
+  @return -1 user not found\n
+           0 user authorization unchanged\n
+           1 user authorization changed
+**/
+int AccessTable::setUserAuth(byte *tag_id, byte auth) {
+  // Check for user tag in table
+  int tableIndex = this->getUserIndex(tag_id);
+
+  return this->setAuth(tableIndex, auth);
+}
+
+/**
   Add a user and set his authorization.
   
   @return -1 table full\n
            0 user already in table\n
            1 user added to table
-*/
+**/
 int AccessTable::addUser(byte *tag_id, byte auth) {
   // Check if user exists
   if(this->getUserIndex(tag_id) >= 0) {
@@ -52,20 +68,33 @@ int AccessTable::addUser(byte *tag_id, byte auth) {
   return 1;
 }
 
-/*
+/**
   Get the number of users in table.
   
   @return number of users
-*/
+**/
 unsigned int AccessTable::getNumUsers() {
   unsigned int countLSB = EEPROM.read(userCountAddr+0);
   unsigned int countMSB = EEPROM.read(userCountAddr+1);
   return countLSB + (countMSB << 8);
 };
 
-/*
+/**
+  Get the number of users in table.
+  
+  @return 0: success\n
+         -1: invalid inputs
+**/
+int AccessTable::getNumUsers(unsigned int *lsb, unsigned int *msb) {
+  if(lsb == NULL || msb == NULL) { return -1; }
+  *lsb = EEPROM.read(userCountAddr+0);
+  *msb = EEPROM.read(userCountAddr+1);
+  return 0;
+};
+
+/**
   Delete all users and authorizations from table.
-*/
+**/
 int AccessTable::clearTable() {
   // Write a 0 to all bytes of the EEPROM
   for (int i = 0; i < MAX_EEPROM_SIZE; i++) {
@@ -74,9 +103,9 @@ int AccessTable::clearTable() {
   return 0;
 }
 
-/*
+/**
   Print all users in table on serial port.
-*/
+**/
 void AccessTable::print_table() {
   byte cur_byte;
   Serial.println("Printing access table content.");
@@ -98,7 +127,7 @@ void AccessTable::print_table() {
   }   
 }
 
-/*
+/**
   Check if user is authorized from the table index.
   
   @param  tableIndex  index in user table
@@ -106,7 +135,7 @@ void AccessTable::print_table() {
   @return -1 invalid table index\n
            0 user unauthorized\n
            1 user authorized
-*/
+**/
 int AccessTable::getAuth(int tableIndex) {
   if(tableIndex < 0 || tableIndex >= MAX_USER_SIZE) {
     return -1;   
@@ -128,7 +157,7 @@ int AccessTable::getAuth(int tableIndex) {
   return (curAuth == byteMask);
 }
 
-/*
+/**
   Set user authorization.
   
   @param  tableIndex  index in user table
@@ -136,7 +165,7 @@ int AccessTable::getAuth(int tableIndex) {
   @return -1 invalid table index\n
            0 no change in table\n
            1 authorization changed in table
-*/
+**/
 int AccessTable::setAuth(int tableIndex, byte auth) {
   if(tableIndex < 0 || tableIndex >= MAX_USER_SIZE) {
     return -1;   
@@ -169,14 +198,14 @@ int AccessTable::setAuth(int tableIndex, byte auth) {
   } 
 }
 
-/*
+/**
   Find index of user in table
 
   @param  tag_id  user tag (4 bytes)
   
   @return -1 user not found\n
           >0 index of user in table
-*/
+**/
 int AccessTable::getUserIndex(byte *tag_id) {
   int byteNum;
   int curUser;
@@ -198,6 +227,12 @@ int AccessTable::getUserIndex(byte *tag_id) {
   return tableIndex;
 }
 
+/**
+  Updates the number of users in table.
+  
+  @return -1 table full\n
+           0 update successful
+**/
 int AccessTable::setNumUsers(unsigned int numUsers) {
   if(numUsers > MAX_USER_SIZE) {
     return -1;

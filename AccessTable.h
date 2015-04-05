@@ -19,8 +19,10 @@ const unsigned int userCountAddr = MAX_EEPROM_SIZE - 2;
 class AccessTable {
   public:
     unsigned int getNumUsers();
+    int getNumUsers(unsigned int *lsb, unsigned int *msb);
     
     int getUserAuth(byte *tag_id);
+    int setUserAuth(byte *tag_id, byte auth);
     int addUser(byte *tag_id, byte auth);
     int clearTable();
     void print_table();

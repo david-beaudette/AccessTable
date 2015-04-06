@@ -109,7 +109,9 @@ int AccessTable::clearTable() {
 void AccessTable::print_table() {
   byte cur_byte;
   Serial.println("Printing access table content.");
-  Serial.println("Users:");
+  Serial.print("There are ");
+  Serial.print(this->getNumUsers());
+  Serial.println(" users registered:");
   for(int i = 0; i < MAX_USER_SIZE; i++) {
     Serial.print("User ");
     Serial.print(i);
@@ -124,7 +126,8 @@ void AccessTable::print_table() {
     Serial.print(" (auth = ");
     Serial.print(getAuth(i));
     Serial.println(")");
-  }   
+  } 
+  Serial.println(" ");
 }
 
 /**

@@ -83,14 +83,22 @@ void loop() {
       Serial.println("Ok: no data found in EEPROM.");
     }
   }
+  if(print_table) {
+    table.print_table();
+  }
   
   if(fill_table) {
     Serial.println("Adding users.");
     for(int i = 0; i < list_size; i++) {
+      Serial.print("Adding user # ");
+      Serial.println(i);
       if(table.addUser(&tag_list[4*i], auth_list[i]) != 1) {
         Serial.print("Error: user ");
         Serial.print(i);
         Serial.println(" already in table.");
+      }
+      if(print_table) {
+        table.print_table();
       }
       // Check if the number of users is correct
       num_users = table.getNumUsers();

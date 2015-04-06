@@ -9,12 +9,12 @@
 #include "Arduino.h"
 #include <EEPROM.h>
 
-#define MAX_USER_SIZE    248
+#define MAX_USER_SIZE    247
 #define MAX_EEPROM_SIZE 1024
 
 const unsigned int userStartAddr = 0;
 const unsigned int authStartAddr = userStartAddr + 4 * MAX_USER_SIZE;
-const unsigned int userCountAddr = MAX_EEPROM_SIZE - 2;
+const unsigned int userCountAddr = MAX_EEPROM_SIZE - 3;
 
 class AccessTable {
   public:

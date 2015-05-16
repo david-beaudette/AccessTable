@@ -24,13 +24,13 @@ const int check_auth = 1;
 
 // User tags
 const int list_size = 5;
-byte tag_list[list_size*4] = { 0xB3, 0xED, 0xE6, 0xC7,
-                               0x5D, 0x84, 0xF7, 0x54, 
-                               0x70, 0x40, 0x84, 0x0B,
-                               0xB7, 0x4E, 0x9E, 0x6D,
+byte tag_list[list_size*4] = { 0xE5, 0x74, 0xCF, 0x28,
+                               0x8E, 0xE8, 0xF9, 0x55, 
+                               0x91, 0x49, 0xF9, 0x55,
+                               0x82, 0xC9, 0xF9, 0x55,
                                0x93, 0xA6, 0xDF, 0xC7};
 
-byte auth_list[list_size] = {1,1,1,0,0};
+byte auth_list[list_size] = {1,0,1,0,0};
 
 void setup() {
   // Setup serial communication  

@@ -97,9 +97,6 @@ void loop() {
         Serial.print(i);
         Serial.println(" already in table.");
       }
-      if(print_table) {
-        table.print_table();
-      }
       // Check if the number of users is correct
       num_users = table.getNumUsers();
       if(num_users != (i+1)) {
@@ -114,9 +111,9 @@ void loop() {
     if(test_ok) {
       Serial.println("Ok: users were added.");
     }
-  }
-  if(print_table) {
-    table.print_table();
+    if(print_table) {
+      table.print_table();
+    }
   }
   
   // Check if users are found and have the right authorization
@@ -127,6 +124,15 @@ void loop() {
         Serial.print("Error: user # ");
         Serial.print(i);
         Serial.println(" have wrong authorization.");
+        test_ok = 0;
+      }
+    }
+    // Check 3 bytes version of the function
+    for(int i = 0; i < num_users; i++) {
+      if(table.getUserAuth(&tag_list[4*i], 3) != auth_list[i]) {
+        Serial.print("Error: user # ");
+        Serial.print(i);
+        Serial.println(" have wrong authorization by comparing 3 bytes.");
         test_ok = 0;
       }
     }
@@ -142,5 +148,4 @@ void loop() {
   // Test complete
   while(1);  
 }
-
 

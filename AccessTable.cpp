@@ -15,9 +15,9 @@
            0 user unauthorized\n
            1 user authorized
 **/
-int AccessTable::getUserAuth(byte *tag_id) {
+int AccessTable::getUserAuth(byte *tag_id, int num_bytes) {
   // Check for user tag in table
-  int tableIndex = this->getUserIndex(tag_id);
+  int tableIndex = this->getUserIndex(tag_id, num_bytes);
 
   return this->getAuth(tableIndex);
 }
@@ -59,8 +59,8 @@ int AccessTable::addUser(byte *tag_id, byte auth) {
   this->setAuth(numUsers, auth);
   
   // Write user tag
-  for(int byteNum = 0; byteNum < 4; byteNum++) {
-    EEPROM.write(userStartAddr + numUsers*4 + byteNum, tag_id[byteNum]);
+  for(int byteNum = 0; byteNum < NOMINAL_TAG_LEN; byteNum++) {
+    EEPROM.write(userStartAddr + numUsers*NOMINAL_TAG_LEN + byteNum, tag_id[byteNum]);
   }
   // Increase table size (not checking for table full again)
   this->setNumUsers(numUsers + 1);  
@@ -116,10 +116,10 @@ void AccessTable::print_table() {
     Serial.print("User ");
     Serial.print(i);
     Serial.print(": ");
-    for(int j = 0; j < 4; j++) {
-      cur_byte = EEPROM.read(i*4 + j);
+    for(int j = 0; j < NOMINAL_TAG_LEN; j++) {
+      cur_byte = EEPROM.read(i*NOMINAL_TAG_LEN + j);
       Serial.print(cur_byte, HEX);
-      if(j < 3) {
+      if(j < (NOMINAL_TAG_LEN-1)) {
         Serial.print(", ");
       }
     }
@@ -204,12 +204,13 @@ int AccessTable::setAuth(int tableIndex, byte auth) {
 /**
   Find index of user in table
 
-  @param  tag_id  user tag (4 bytes)
+  @param  tag_id     user tag (num_bytes bytes)
+  @param  num_bytes  tag length to validate in bytes
   
   @return -1 user not found\n
           >0 index of user in table
 **/
-int AccessTable::getUserIndex(byte *tag_id) {
+int AccessTable::getUserIndex(byte *tag_id, int num_bytes) {
   int byteNum;
   int curUser;
   int tableIndex = -1;
@@ -217,11 +218,12 @@ int AccessTable::getUserIndex(byte *tag_id) {
   // Find this tag in EEPROM table
   for(curUser = 0; curUser < this->getNumUsers(); curUser++) {
     byteNum = 0;
-    while(EEPROM.read(userStartAddr + curUser*4 + byteNum) == tag_id[byteNum] && \
-          byteNum < 4) {
+    while(EEPROM.read(userStartAddr + \
+                 curUser*NOMINAL_TAG_LEN + byteNum) == tag_id[byteNum] && \
+          byteNum < num_bytes) {
        byteNum++;
     }
-    if(byteNum == 4) {
+    if(byteNum == num_bytes) {
       // All bytes compared equal
       tableIndex = curUser;
       break;

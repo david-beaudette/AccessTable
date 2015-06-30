@@ -7,11 +7,26 @@
 #define __ACCESSTABLE__
 
 #include "Arduino.h"
+
+#ifdef EEPROM_SPI
+// Using external SPI EEPROM 
+// Microchip 25LC1024 (1Mbit)
+#include <spieeprom.h>
+
+// These constants are relative to 1 page
+#define MAX_USER_SIZE     32
+#define MAX_EEPROM_SIZE  256
+#define NOMINAL_TAG_LEN    4
+
+#else 
+// Using builtin Arduino EEPROM
 #include <EEPROM.h>
 
 #define MAX_USER_SIZE    247
 #define MAX_EEPROM_SIZE 1024
 #define NOMINAL_TAG_LEN    4
+
+#endif  // EEPROM_SPI
 
 const unsigned int userStartAddr = 0;
 const unsigned int authStartAddr = userStartAddr + NOMINAL_TAG_LEN * MAX_USER_SIZE;

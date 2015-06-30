@@ -2,8 +2,12 @@ AccessTable KEYWORD1
 
 getNumUsers    KEYWORD2
 setNumUsers    KEYWORD2
-setAuth        KEYWORD2
+getUserAuth    KEYWORD2
 setUserAuth    KEYWORD2
-getUserIndex   KEYWORD2
 addUser        KEYWORD2
 clearTable     KEYWORD2
+print_table    KEYWORD2
+setNumUsers    KEYWORD2
+setAuth        KEYWORD2
+getAuth        KEYWORD2
+getUserIndex   KEYWORD2

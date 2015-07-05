@@ -6,14 +6,21 @@
 
 #include "AccessTable.h"
 
+void AccessTable::AccessTable() {
+  _spi_eeprom = new SPIEEPROM(1);
+  _spi_eeprom.setup(1);
+  _spi_eeprom.unprotect();
+}
+
+
 /**
-  Check if user is authorized from its tag ID.
+  Check if user is authorised from its tag ID.
   
   @param  tag_id  user tag (4 bytes)
   
   @return -1 user not found\n
-           0 user unauthorized\n
-           1 user authorized
+           0 user unauthorised\n
+           1 user authorised
 **/
 int AccessTable::getUserAuth(byte *tag_id, int num_bytes) {
   // Check for user tag in table
@@ -23,13 +30,13 @@ int AccessTable::getUserAuth(byte *tag_id, int num_bytes) {
 }
 
 /**
-  Set user authorization from its tag ID.
+  Set user authorisation from its tag ID.
   
   @param  tag_id  user tag (4 bytes)
   
   @return -1 user not found\n
-           0 user authorization unchanged\n
-           1 user authorization changed
+           0 user authorisation unchanged\n
+           1 user authorisation changed
 **/
 int AccessTable::setUserAuth(byte *tag_id, byte auth) {
   // Check for user tag in table
@@ -39,7 +46,7 @@ int AccessTable::setUserAuth(byte *tag_id, byte auth) {
 }
 
 /**
-  Add a user and set his authorization.
+  Add a user and set his authorisation.
   
   @return -1 table full\n
            0 user already in table\n
@@ -55,12 +62,12 @@ int AccessTable::addUser(byte *tag_id, byte auth) {
   if(numUsers >= MAX_USER_SIZE) {
     return -1;
   }
-  // Write authorization bit
+  // Write authorisation bit
   this->setAuth(numUsers, auth);
   
   // Write user tag
   for(int byteNum = 0; byteNum < NOMINAL_TAG_LEN; byteNum++) {
-    EEPROM.write(userStartAddr + numUsers*NOMINAL_TAG_LEN + byteNum, tag_id[byteNum]);
+    this->writeMemory(userStartAddr + numUsers*NOMINAL_TAG_LEN + byteNum, tag_id[byteNum]);
   }
   // Increase table size (not checking for table full again)
   this->setNumUsers(numUsers + 1);  
@@ -74,33 +81,28 @@ int AccessTable::addUser(byte *tag_id, byte auth) {
   @return number of users
 **/
 unsigned int AccessTable::getNumUsers() {
-  unsigned int countLSB = EEPROM.read(userCountAddr+0);
-  unsigned int countMSB = EEPROM.read(userCountAddr+1);
+  unsigned int countLSB = 0;
+  unsigned int countMSB = 0;
+  for(int i = 0; i < PAGE_SIZE; i++) {
+    countLSB += this->readMemory(userCountAddr+0);
+    countMSB += this->readMemory(userCountAddr+1);
+  }
   return countLSB + (countMSB << 8);
 };
 
 /**
-  Get the number of users in table.
-  
-  @return 0: success\n
-         -1: invalid inputs
-**/
-int AccessTable::getNumUsers(unsigned int *lsb, unsigned int *msb) {
-  if(lsb == NULL || msb == NULL) { return -1; }
-  *lsb = EEPROM.read(userCountAddr+0);
-  *msb = EEPROM.read(userCountAddr+1);
-  return 0;
-};
-
-/**
-  Delete all users and authorizations from table.
+  Delete all users and authorisations from table.
 **/
 int AccessTable::clearTable() {
+#ifdef EEPROM_SPI  
+  _spi_eeprom->erase_chip();
+#else
   // Write a 0 to all bytes of the EEPROM
-  for (int i = 0; i < MAX_EEPROM_SIZE; i++) {
-    EEPROM.write(i, 0);
+  for (int i = 0; i < EEPROM_SIZE; i++) {
+    this->writeMemory(i, 0);
   }
   return 0;
+#endif  // EEPROM_SPI
 }
 
 /**
@@ -117,7 +119,7 @@ void AccessTable::print_table() {
     Serial.print(i);
     Serial.print(": ");
     for(int j = 0; j < NOMINAL_TAG_LEN; j++) {
-      cur_byte = EEPROM.read(i*NOMINAL_TAG_LEN + j);
+      cur_byte = this->readMemory(i*NOMINAL_TAG_LEN + j);
       Serial.print(cur_byte, HEX);
       if(j < (NOMINAL_TAG_LEN-1)) {
         Serial.print(", ");
@@ -131,22 +133,23 @@ void AccessTable::print_table() {
 }
 
 /**
-  Check if user is authorized from the table index.
+  Check if user is authorised from the table index.
   
   @param  tableIndex  index in user table
   
   @return -1 invalid table index\n
-           0 user unauthorized\n
-           1 user authorized
+           0 user unauthorised\n
+           1 user authorised
 **/
 int AccessTable::getAuth(int tableIndex) {
   if(tableIndex < 0 || tableIndex >= MAX_USER_SIZE) {
     return -1;   
   }
-  unsigned int relAddr = tableIndex >> 3;
+  unsigned int pageAddr = tableIndex >> PAGE_OFFSET_SHIFT;
+  unsigned int relAddr  = tableIndex >> AUTH_OFFSET_SHIFT;
   //Serial.print("-- Checking user auth at address ");
   //Serial.print(authStartAddr + relAddr);
-  byte tableByte = EEPROM.read(authStartAddr + relAddr);
+  byte tableByte = this->readMemory(authStartAddr + relAddr);
   //Serial.print(", memory content is 0x");
   //Serial.print(tableByte, HEX);
   //Serial.print(", the mask used is 0x");
@@ -161,13 +164,13 @@ int AccessTable::getAuth(int tableIndex) {
 }
 
 /**
-  Set user authorization.
+  Set user authorisation.
   
   @param  tableIndex  index in user table
   
   @return -1 invalid table index\n
            0 no change in table\n
-           1 authorization changed in table
+           1 authorisation changed in table
 **/
 int AccessTable::setAuth(int tableIndex, byte auth) {
   if(tableIndex < 0 || tableIndex >= MAX_USER_SIZE) {
@@ -176,7 +179,7 @@ int AccessTable::setAuth(int tableIndex, byte auth) {
   unsigned int relAddr = tableIndex >> 3;
   //Serial.print("-- Setting user auth at address ");
   //Serial.print(authStartAddr + relAddr);
-  byte tableByte = EEPROM.read(authStartAddr + relAddr);
+  byte tableByte = this->readMemory(authStartAddr + relAddr);
   //Serial.print(", memory content is 0x");
   //Serial.print(tableByte, HEX);
   //Serial.print(", the mask used is 0x");
@@ -191,12 +194,12 @@ int AccessTable::setAuth(int tableIndex, byte auth) {
     return 0;
   }
   else {
-    // Change authorization (bitwise xor used)
+    // Change authorisation (bitwise xor used)
     //Serial.print(", updating the auth byte with 0x");
     tableByte = tableByte ^ byteMask;
     //Serial.print(tableByte, HEX);
-    //Serial.println(", returning 1 (authorization updated).");
-    EEPROM.write(authStartAddr + relAddr, tableByte);
+    //Serial.println(", returning 1 (authorisation updated).");
+    this->writeMemory(authStartAddr + relAddr, tableByte);
     return 1;
   } 
 }
@@ -218,7 +221,7 @@ int AccessTable::getUserIndex(byte *tag_id, int num_bytes) {
   // Find this tag in EEPROM table
   for(curUser = 0; curUser < this->getNumUsers(); curUser++) {
     byteNum = 0;
-    while(EEPROM.read(userStartAddr + \
+    while(this->readMemory(userStartAddr + \
                  curUser*NOMINAL_TAG_LEN + byteNum) == tag_id[byteNum] && \
           byteNum < num_bytes) {
        byteNum++;
@@ -233,16 +236,58 @@ int AccessTable::getUserIndex(byte *tag_id, int num_bytes) {
 }
 
 /**
-  Updates the number of users in table.
-  
-  @return -1 table full\n
-           0 update successful
+* @details Updates the number of users in table.
+* 
+* @param   numUsers   number of users
+* @return  -1 table full\n
+*           0 update successful
 **/
 int AccessTable::setNumUsers(unsigned int numUsers) {
   if(numUsers > MAX_USER_SIZE) {
     return -1;
   }
-  EEPROM.write(userCountAddr+0, numUsers & 0xFF);
-  EEPROM.write(userCountAddr+1, (numUsers >> 8) & 0xFF);
+  this->writeMemory(userCountAddr+0, numUsers & 0xFF);
+  this->writeMemory(userCountAddr+1, (numUsers >> 8) & 0xFF);
   return 0;
 };
+
+/**
+* @details Reads a byte from memory.
+* 
+* @param   address   location to write to
+* 
+* @return  value read from memory
+**/
+byte readMemory(long address) {
+#ifdef EEPROM_SPI  
+  return _spi_eeprom->read_byte(address);
+#else
+  return EEPROM.read(address);
+#endif  // EEPROM_SPI
+
+}
+
+/**
+* @details Writes a byte to memory.
+* @param   address   location to write to
+* @param   value     value to write (0-255)
+**/
+void writeMemory(long address, byte value) {
+#ifdef EEPROM_SPI  
+  _spi_eeprom->write(address, value);
+#else
+  EEPROM.write(address, value);
+#endif  // EEPROM_SPI
+}
+
+/**
+* @details Writes a byte array to memory. Only used with 
+*          SPI memory to minimise write cycles.
+* @param   address   location to write to
+* @param   value     values to write 
+* @param   length    number of values to write 
+**/
+void writeMemoryArray(long address, byte *value, int length) {
+  _spi_eeprom->write(address, value);
+}
+

@@ -19,11 +19,11 @@ AccessTable table;
 // Test configuration options
 // Reset EEPROM, clearing previous data 
 const int reset_memory = 1;
-// Fill table with users and authorizations
+// Fill table with users and authorisations
 const int fill_table = 1;
-// Verify authorization for a few users
+// Verify authorisation for a few users
 const int print_table = 1;
-// Verify authorization for a few users
+// Verify authorisation for a few users
 const int check_auth = 1;
 
 // User tags
@@ -120,14 +120,14 @@ void loop() {
     }
   }
   
-  // Check if users are found and have the right authorization
+  // Check if users are found and have the right authorisation
   if(check_auth) {
     num_users = table.getNumUsers();
     for(int i = 0; i < num_users; i++) {
       if(table.getUserAuth(&tag_list[4*i]) != auth_list[i]) {
         Serial.print("Error: user # ");
         Serial.print(i);
-        Serial.println(" have wrong authorization.");
+        Serial.println(" have wrong authorisation.");
         test_ok = 0;
       }
     }
@@ -136,7 +136,7 @@ void loop() {
       if(table.getUserAuth(&tag_list[4*i], 3) != auth_list[i]) {
         Serial.print("Error: user # ");
         Serial.print(i);
-        Serial.println(" have wrong authorization by comparing 3 bytes.");
+        Serial.println(" have wrong authorisation by comparing 3 bytes.");
         test_ok = 0;
       }
     }

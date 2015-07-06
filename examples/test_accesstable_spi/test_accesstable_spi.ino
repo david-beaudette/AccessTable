@@ -10,9 +10,6 @@
 #include <EEPROM.h>
 #include <SPI.h>
 
-// Enforce using external SPI EEPROM
-#define EEPROM_SPI
-
 // Declare table of users
 AccessTable table;
 

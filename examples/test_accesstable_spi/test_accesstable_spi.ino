@@ -1,17 +1,19 @@
-/* La Fabrique
+/** La Fabrique
 
    AccessTable class test 
    by David Beaudette
    
    Tests the AccessTable class methods.
    
-*/
+**/
+#define EEPROM_SPI
+
 #include "AccessTable.h"
-#include <EEPROM.h>
+#include <spieeprom.h>
 #include <SPI.h>
 
 // Declare table of users
-AccessTable table;
+AccessTable table(19);
 
 // Test configuration options
 // Reset EEPROM, clearing previous data 
@@ -37,8 +39,8 @@ void setup() {
   // Setup serial communication  
   Serial.begin(115200);
   
-  Serial.println("AccessTable class test");
-  Serial.println("---------");  
+  Serial.println(F("AccessTable class test (SPI EEPROM)"));
+  Serial.println(F("---------"));  
 }
 
 void loop() {
@@ -48,40 +50,37 @@ void loop() {
   int test_ok = 1;
   
   // Wait for user input
-  Serial.println("Send character to begin.");
+  Serial.println(F("Send character to begin."));
   while(Serial.available() <= 0) {
     delay(500);
   }
 
   // Report current table size
   ini_num_users = table.getNumUsers();
-  Serial.print("Initial number of users is ");
+  Serial.print(F("Initial number of users is "));
   Serial.println(ini_num_users);
   
   // Clear table
   if(reset_memory) {
-    Serial.print("Clearing memory...");
+    Serial.print(F("Clearing memory..."));
     table.clearTable(); 
-    Serial.println("done.");
+    Serial.println(F("done."));
     num_users = table.getNumUsers();
     if(num_users == 0) {
-      Serial.println("Ok: number of users now 0.");
+      Serial.println(F("Ok: number of users now 0."));
     }
     else {
-      Serial.print("Error: reported number of users after clearing table is ");
+      Serial.print(F("Error: reported number of users after clearing table is "));
       Serial.println(num_users);
       test_ok = 0;
     }
     // Check that table is empty
-    for(int i = 0; i < MAX_EEPROM_SIZE; i++) {
-      if(EEPROM.read(i) != 0) {
-        Serial.print("Error: data found after clearing table at address ");
-        Serial.println(i);
-        test_ok = 0;
-      }     
+    if(table.getNumUsers() != 0) {
+      Serial.println(F("Error: users not 0 after clearing table."));
+      test_ok = 0;     
     }   
     if(test_ok) {
-      Serial.println("Ok: no data found in EEPROM.");
+      Serial.println(F("Ok: no data found in EEPROM."));
     }
   }
   if(print_table) {
@@ -89,28 +88,28 @@ void loop() {
   }
   
   if(fill_table) {
-    Serial.println("Adding users.");
+    Serial.println(F("Adding users."));
     for(int i = 0; i < list_size; i++) {
-      Serial.print("Adding user # ");
+      Serial.print(F("Adding user # "));
       Serial.println(i);
       if(table.addUser(&tag_list[4*i], auth_list[i]) != 1) {
-        Serial.print("Error: user ");
+        Serial.print(F("Error: user "));
         Serial.print(i);
-        Serial.println(" already in table.");
+        Serial.println(F(" already in table."));
       }
       // Check if the number of users is correct
       num_users = table.getNumUsers();
       if(num_users != (i+1)) {
-        Serial.print("Error: the #users is ");
+        Serial.print(F("Error: the #users is "));
         Serial.print(num_users);
-        Serial.print(", ");
+        Serial.print(F(", "));
         Serial.print(i+1);
-        Serial.println(" users expected.");
+        Serial.println(F(" users expected."));
         test_ok = 0;
       }
     }
     if(test_ok) {
-      Serial.println("Ok: users were added.");
+      Serial.println(F("Ok: users were added."));
     }
     if(print_table) {
       table.print_table();
@@ -122,28 +121,28 @@ void loop() {
     num_users = table.getNumUsers();
     for(int i = 0; i < num_users; i++) {
       if(table.getUserAuth(&tag_list[4*i]) != auth_list[i]) {
-        Serial.print("Error: user # ");
+        Serial.print(F("Error: user # "));
         Serial.print(i);
-        Serial.println(" have wrong authorisation.");
+        Serial.println(F(" have wrong authorisation."));
         test_ok = 0;
       }
     }
     // Check 3 bytes version of the function
     for(int i = 0; i < num_users; i++) {
       if(table.getUserAuth(&tag_list[4*i], 3) != auth_list[i]) {
-        Serial.print("Error: user # ");
+        Serial.print(F("Error: user # "));
         Serial.print(i);
-        Serial.println(" have wrong authorisation by comparing 3 bytes.");
+        Serial.println(F(" have wrong authorisation by comparing 3 bytes."));
         test_ok = 0;
       }
     }
   }
   // Display test conclusion
   if(test_ok) {
-    Serial.println("Test succeeded.");
+    Serial.println(F("Test succeeded."));
   }
   else {
-    Serial.println("Test failed");
+    Serial.println(F("Test failed"));
   }
 
   // Test complete

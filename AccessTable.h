@@ -15,7 +15,7 @@
                              // tag address offset
 
 
-#ifdef EEPROM_SPI // Using external SPI EEPROM Microchip 25LC1024 (1Mbit)
+#if defined(EEPROM_SPI)// Using external SPI EEPROM Microchip 25LC1024 (1Mbit)
 
 #include <spieeprom.h>
 
@@ -57,6 +57,7 @@ const unsigned int userCountAddr = EEPROM_SIZE - 3;
 class AccessTable {
   public:
     AccessTable();
+    AccessTable(int pin_num);
     unsigned int getNumUsers();    
     int getUserAuth(byte *tag_id, int num_bytes = NOMINAL_TAG_LEN);
     int setUserAuth(byte *tag_id, byte auth);
@@ -72,8 +73,11 @@ class AccessTable {
     byte readMemory(long address);
     void writeMemory(long address, byte value);
     void writeMemoryArray(long address, byte *value, int length);
-    
+
+#if defined(EEPROM_SPI) 
+    byte _page_data[PAGE_SIZE];
     SPIEEPROM *_spi_eeprom;
+#endif  // EEPROM_SPI  
 };
 
 

@@ -6,12 +6,25 @@
 
 #include "AccessTable.h"
 
-void AccessTable::AccessTable() {
-  _spi_eeprom = new SPIEEPROM(1);
-  _spi_eeprom.setup(1);
-  _spi_eeprom.unprotect();
+/**
+  Default constructor (use with Arduino EEPROM).
+**/
+ AccessTable::AccessTable() {
+
 }
 
+/**
+  SPI EEPROM constructor.
+  
+  @param  pin_num  SPI slave select pin for EEPROM
+**/
+void AccessTable::AccessTable(int pin_num) {
+#if defined(EEPROM_SPI) 
+  _spi_eeprom = new SPIEEPROM;
+  _spi_eeprom.setup(pin_num);
+  _spi_eeprom.protect_none();
+#endif  // EEPROM_SPI  
+}
 
 /**
   Check if user is authorised from its tag ID.
@@ -94,7 +107,7 @@ unsigned int AccessTable::getNumUsers() {
   Delete all users and authorisations from table.
 **/
 int AccessTable::clearTable() {
-#ifdef EEPROM_SPI  
+#if defined(EEPROM_SPI) 
   _spi_eeprom->erase_chip();
 #else
   // Write a 0 to all bytes of the EEPROM
@@ -259,7 +272,7 @@ int AccessTable::setNumUsers(unsigned int numUsers) {
 * @return  value read from memory
 **/
 byte readMemory(long address) {
-#ifdef EEPROM_SPI  
+#if defined(EEPROM_SPI) 
   return _spi_eeprom->read_byte(address);
 #else
   return EEPROM.read(address);
@@ -273,7 +286,7 @@ byte readMemory(long address) {
 * @param   value     value to write (0-255)
 **/
 void writeMemory(long address, byte value) {
-#ifdef EEPROM_SPI  
+#if defined(EEPROM_SPI) 
   _spi_eeprom->write(address, value);
 #else
   EEPROM.write(address, value);

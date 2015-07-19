@@ -10,9 +10,6 @@
 #include "Arduino.h"
 
 #define NOMINAL_TAG_LEN    4 // Nominal length of a user tag
-#define AUTH_OFFSET_SHIFT  3 // Number of rightshift bits to obtain 
-                             // authorisation address offset from 
-                             // tag address offset
 
 
 #if defined(EEPROM_SPI)// Using external SPI EEPROM Microchip 25LC1024 (1Mbit)
@@ -23,17 +20,21 @@
 #define NUM_PAGES        512 // Number of pages in EEPROM  
 #define USERS_PER_PAGE    32 // Number of users per memory page
 #define MAX_USER_SIZE  16384 // Limit on total number of users
-#define TAG_OFFSET_MASK 0x7F // Mask to obtain tag address offset 
-                             // from index
-#define TAG_OFFSET_SHIFT   2 // Number of leftshift bits to obtain 
-                             // tag address from masked index
-#define PAGE_OFFSET_SHIFT  5 // Number of rightshift bits to obtain 
-                             // page address from index
+
+#define TAG_OFFSET_MASK 0x1F  // Number of leftshift bits to obtain 
+                              // tag address from masked index
+#define TAG_OFFSET_LSHIFT  2  // Number of leftshift bits to obtain 
+                              // tag address from masked index
+#define AUTH_PAGE_OFFSET 0x80 // Offset on a page where authorisation
+                              // bytes begin
+#define PAGE2ADDR_LSHIFT   5  // Number of leftshift bits to obtain 
+                              // page address from page number
+                             
 const unsigned int userStartAddr = 0; // Start of tags on a page
 // Start of authorisations on a page
 const unsigned int authStartAddr = userStartAddr + 
                                    NOMINAL_TAG_LEN * USERS_PER_PAGE;
-// Start of user count on a page
+// Start of user count on a page (2 bytes = 65535 users max)
 const unsigned int userCountAddr = PAGE_SIZE - 3;
 
 #else // Using builtin Arduino EEPROM
@@ -44,6 +45,9 @@ const unsigned int userCountAddr = PAGE_SIZE - 3;
 #define MAX_USER_SIZE    247 // Limit on total number of users
 #define EEPROM_SIZE     1024
 #define NOMINAL_TAG_LEN    4
+#define AUTH_OFFSET_SHIFT  3 // Number of rightshift bits to obtain 
+                             // authorisation address offset from 
+                             // tag address offset
 
 const unsigned int userStartAddr = 0; // Start of tags in memory
 // Start of authorisations in memory
@@ -67,12 +71,17 @@ class AccessTable {
     
   private:
     int setNumUsers(unsigned int numUsers);
-    int setAuth(int tableIndex, byte auth);
-    int getAuth(int tableIndex);
+    int setAuth(unsigned int tableIndex, byte auth);
+    int checkAuthMod(unsigned int tableIndex, byte auth)
+    int getAuth(unsigned int tableIndex);
     int getUserIndex(byte *tag_id, int num_bytes = NOMINAL_TAG_LEN);
-    byte readMemory(long address);
-    void writeMemory(long address, byte value);
-    void writeMemoryArray(long address, byte *value, int length);
+    
+    unsigned int  index2pageAddr(unsigned int tableIndex);
+    int index2pageNum(unsigned int tableIndex);
+    unsigned long index2tagAddr(unsigned int tableIndex);
+    byte index2tagOffset(unsigned int tableIndex);
+    unsigned long index2authAddr(unsigned int tableIndex);
+    byte index2AuthOffset(unsigned int tableIndex);
 
 #if defined(EEPROM_SPI) 
     byte _page_data[PAGE_SIZE];

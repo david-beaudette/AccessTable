@@ -30,10 +30,6 @@
 #define PAGE2ADDR_LSHIFT   5  // Number of leftshift bits to obtain 
                               // page address from page number
                              
-const unsigned int userStartAddr = 0; // Start of tags on a page
-// Start of authorisations on a page
-const unsigned int authStartAddr = userStartAddr + 
-                                   NOMINAL_TAG_LEN * USERS_PER_PAGE;
 // Start of user count on a page (2 bytes = 65535 users max)
 const unsigned int userCountAddr = PAGE_SIZE - 3;
 
@@ -81,8 +77,17 @@ class AccessTable {
     unsigned long index2tagAddr(unsigned int tableIndex);
     byte index2tagOffset(unsigned int tableIndex);
     unsigned long index2authAddr(unsigned int tableIndex);
+    byte index2authMask(unsigned int tableIndex);
     byte index2AuthOffset(unsigned int tableIndex);
-
+    
+    int readTag(unsigned long address, byte *tag_id);
+    int readTag(unsigned long address, byte *tag_id);
+    byte readMemory(unsigned long address);
+    void writeToPage(long page_offset, byte value);
+    
+    void loadUserPage(unsigned int tableIndex);
+    void saveUserPage(unsigned int tableIndex);
+    
 #if defined(EEPROM_SPI) 
     byte _page_data[PAGE_SIZE];
     SPIEEPROM *_spi_eeprom;

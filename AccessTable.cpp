@@ -290,8 +290,8 @@ int AccessTable::setAuth(unsigned int tableIndex, byte auth) {
   @param  tag_id     user tag (num_bytes bytes)
   @param  num_bytes  tag length to validate in bytes
   
-  @return -1 user not found\n
-          >0 index of user in table
+  @return   -1 user not found\n
+          >= 0 index of user in table
 **/
 int AccessTable::getUserIndex(byte *tag_id, int num_bytes) {
   int byteNum;
@@ -316,7 +316,8 @@ int AccessTable::getUserIndex(byte *tag_id, int num_bytes) {
 }
 
 /**
-* @details Updates the number of users in table.
+* @details Updates the number of users in table. Only used with
+*          Arduino internal EEPROM.
 * 
 * @param   numUsers   number of users
 * @return  -1 table full\n
@@ -326,8 +327,8 @@ int AccessTable::setNumUsers(unsigned int numUsers) {
   if(numUsers > MAX_USER_SIZE) {
     return -1;
   }
-  EEPROM.write(userCountAddr+0, numUsers & 0xFF);
-  EEPROM.write(userCountAddr+1, (numUsers >> 8) & 0xFF);
+  EEPROM.write(userCountAddr+0, numUsers & 0xFF); // LSB
+  EEPROM.write(userCountAddr+1, (numUsers >> 8) & 0xFF); // MSB
   return 0;
 };
 
@@ -338,7 +339,7 @@ int AccessTable::setNumUsers(unsigned int numUsers) {
 * @return  address where user tag is saved
 **/
 unsigned long AccessTable::index2tagAddr(unsigned int tableIndex) {
-  return this->index2pageAddr(tableIndex) + index2tagOffset(tableIndex);
+  return this->index2pageAddr(tableIndex) + this->index2tagOffset(tableIndex);
 };
 
 /**
@@ -348,7 +349,8 @@ unsigned long AccessTable::index2tagAddr(unsigned int tableIndex) {
 * @return  address where user authorisation is saved
 **/
 unsigned long AccessTable::index2authAddr(unsigned int tableIndex) {
-  return this->index2pageAddr(tableIndex) + index2authOffset(tableIndex);
+  return this->index2pageAddr(tableIndex) + 
+         this->index2authOffset(unsigned int tableIndex);  
 };
 
 /**
@@ -359,7 +361,13 @@ unsigned long AccessTable::index2authAddr(unsigned int tableIndex) {
 * @return  address where user info is saved
 **/
 unsigned long AccessTable::index2pageAddr(unsigned int tableIndex) {
+#if defined(EEPROM_SPI) 
+  // Build page address by left shifting the page number
   return this->index2pageNum(tableIndex) << PAGE2ADDR_LSHIFT;
+#else
+  // Only one page
+  return userStartAddr;  
+#endif  // EEPROM_SPI  
 };
 
 /**
@@ -372,7 +380,30 @@ unsigned long AccessTable::index2pageAddr(unsigned int tableIndex) {
 * @return  address where user info is saved
 **/
 int AccessTable::index2pageNum(unsigned int tableIndex) {
+#if defined(EEPROM_SPI) 
+  // Subsequent users on subsequent pages
   return tableIndex%NUM_PAGES;
+#else
+  // Only one page
+  return 0;  
+#endif  // EEPROM_SPI  
+};
+
+/**
+* @details Computes the mask to apply to authorisation byte 
+*          in memory to retrieve user authorisation bit.
+* 
+* @param   tableIndex   index of user
+* @return  tag offset
+**/
+byte AccessTable::index2authMask(unsigned int tableIndex) {
+#if defined(EEPROM_SPI) 
+  // For external EEPROM each user has its own authorisation address
+  return 1;
+#else
+  // For internal Arduino EEPROM there are 8 user authorisations per address
+  return 1 << (tableIndex%8);  
+#endif  // EEPROM_SPI  
 };
 
 /**
@@ -383,7 +414,11 @@ int AccessTable::index2pageNum(unsigned int tableIndex) {
 * @return  tag offset
 **/
 byte AccessTable::index2tagOffset(unsigned int tableIndex) {
+#if defined(EEPROM_SPI) 
   return (tableIndex & TAG_OFFSET_MASK) << TAG_OFFSET_LSHIFT;
+#else
+  return tableIndex * NOMINAL_TAG_LEN;  
+#endif  // EEPROM_SPI  
 };
 
 /**
@@ -393,8 +428,56 @@ byte AccessTable::index2tagOffset(unsigned int tableIndex) {
 * @param   tableIndex   index of user
 * @return  authorisation offset 
 **/
-byte AccessTable::index2tagOffset(unsigned int tableIndex) {
+byte AccessTable::index2authOffset(unsigned int tableIndex) {
+#if defined(EEPROM_SPI) 
   return AUTH_PAGE_OFFSET + (tableIndex & TAG_OFFSET_MASK);
+#else
+  return authStartAddr + (tableIndex >> 3);  
+#endif  // EEPROM_SPI  
 };
 
+/**
+* @details Reads a byte from memory.
+* 
+* @param   address   location to write to
+* 
+* @return  value read from memory
+**/
+byte readMemory(unsigned long address) {
+#if defined(EEPROM_SPI) 
+  return _spi_eeprom->read_byte(address);
+#else
+  return EEPROM.read(address);
+#endif  // EEPROM_SPI
 
+}
+
+/**
+* @details Reads a tag from memory.
+* 
+* @param   address   location to write to
+* @param   address   location to write to
+* 
+* @return  1: success
+**/
+int readTag(unsigned long address, byte *tag_id) {
+#if defined(EEPROM_SPI) 
+  
+#else
+  
+#endif  // EEPROM_SPI
+  return 1;
+}
+
+/**
+* @details Writes a byte to a page in memory.
+* @param   address   location to write to
+* @param   value     value to write (0-255)
+**/
+void writeToPage(unsigned long address, byte value) {
+#if defined(EEPROM_SPI) 
+  _page_buffer[address] = value;
+#else
+  EEPROM.write(address, value);
+#endif  // EEPROM_SPI
+}

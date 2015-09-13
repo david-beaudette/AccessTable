@@ -32,7 +32,6 @@ const unsigned int userCountAddr = PAGE_SIZE - 3;
 
 class AccessTable {
   public:
-    AccessTable();
     AccessTable(int pin_num);
     unsigned int getNumUsers();    
     int getUserAuth(byte *tag_id, int num_bytes = NOMINAL_TAG_LEN);
@@ -42,10 +41,13 @@ class AccessTable {
     void print_table();
     
   private:
+    unsigned int getNumUsersInPage(int pageNum);    
+    unsigned int getNumUsersInPageBuffer();    
     int setNumUsers(unsigned int numUsers);
     int setAuth(unsigned int tableIndex, byte auth);
     int checkAuthMod(unsigned int tableIndex, byte auth);
     int getAuth(unsigned int tableIndex);
+    int getAuthInPageBuffer(unsigned int userIdx);
     int getUserIndex(byte *tag_id, int num_bytes = NOMINAL_TAG_LEN);
     
     unsigned int  index2pageAddr(unsigned int tableIndex);
@@ -56,14 +58,12 @@ class AccessTable {
     byte index2authMask(unsigned int tableIndex);
     byte index2AuthOffset(unsigned int tableIndex);
     
-    int readTag(unsigned long address, byte *tag_id);
-    byte readMemory(unsigned long address);
-    void writeToPage(long page_offset, byte value);
+    void writeToPageBuf(unsigned int address, byte value);
     
-    void loadUserPage(unsigned int tableIndex);
-    void saveUserPage(unsigned int tableIndex);
+    void loadPage(unsigned int tableIndex);
+    void savePage(unsigned int tableIndex);
     
-    byte _page_data[PAGE_SIZE];
+    byte _page_buffer[PAGE_SIZE];
     SPIEEPROM *_spi_eeprom;
 };
 

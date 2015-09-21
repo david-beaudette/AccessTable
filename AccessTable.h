@@ -20,20 +20,20 @@
 
 #define TAG_OFFSET_MASK 0x1F  // Number of leftshift bits to obtain 
                               // tag address from masked index
-#define TAG_OFFSET_LSHIFT  2  // Number of leftshift bits to obtain 
+#define TAG_OFFSET_RSHIFT  2  // Number of leftshift bits to obtain 
                               // tag address from masked index
 #define AUTH_PAGE_OFFSET 0x80 // Offset on a page where authorisation
                               // bytes begin
-#define PAGE2ADDR_LSHIFT   5  // Number of leftshift bits to obtain 
+#define PAGE2ADDR_LSHIFT   8  // Number of leftshift bits to obtain 
                               // page address from page number
                              
 // Start of user count on a page (2 bytes = 65535 users max)
-const unsigned int userCountAddr = PAGE_SIZE - 3;
+const unsigned int userCountAddr = PAGE_SIZE - 2;
 
 class AccessTable {
   public:
     AccessTable(int pin_num);
-    unsigned int getNumUsers();    
+    unsigned long getNumUsers();    
     int getUserAuth(byte *tag_id, int num_bytes = NOMINAL_TAG_LEN);
     int setUserAuth(byte *tag_id, byte auth);
     int addUser(byte *tag_id, byte auth);
@@ -50,18 +50,19 @@ class AccessTable {
     int getAuthInPageBuffer(unsigned int userIdx);
     int getUserIndex(byte *tag_id, int num_bytes = NOMINAL_TAG_LEN);
     
-    unsigned int  index2pageAddr(unsigned int tableIndex);
-    int index2pageNum(unsigned int tableIndex);
+    unsigned long index2pageAddr(unsigned int tableIndex);
+    unsigned int  index2pageNum(unsigned int tableIndex);
     unsigned long index2tagAddr(unsigned int tableIndex);
-    byte index2tagOffset(unsigned int tableIndex);
+    unsigned long index2tagOffset(unsigned int tableIndex);
     unsigned long index2authAddr(unsigned int tableIndex);
-    byte index2authMask(unsigned int tableIndex);
-    byte index2AuthOffset(unsigned int tableIndex);
+    unsigned long index2authMask(unsigned int tableIndex);
+    unsigned long index2authOffset(unsigned int tableIndex);
     
     void writeToPageBuf(unsigned int address, byte value);
     
     void loadPage(unsigned int tableIndex);
     void savePage(unsigned int tableIndex);
+    void printPageBuffer();
     
     byte _page_buffer[PAGE_SIZE];
     SPIEEPROM *_spi_eeprom;

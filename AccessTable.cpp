@@ -71,25 +71,29 @@ int AccessTable::setUserAuth(byte *tag_id, byte auth) {
 **/
 int AccessTable::addUser(byte *tag_id, byte auth) {
   // Check for empty entries
-  int numUsers = this->getNumUsers();
+  unsigned long numUsers = this->getNumUsers();
+Serial.print(F("AccessTable::addUser; #users before: "));
+Serial.println(numUsers);
+
   if(numUsers >= MAX_USER_SIZE) {
     return -1;
   }
   // New user index is the next free slot
-  unsigned int tableIndex = numUsers;
+  unsigned long tableIndex = numUsers;
   
   // Load existing page content on memory in page buffer
   this->loadPage(tableIndex);
-
+this->printPageBuffer();
   // Write authorisation bit
-  _page_buffer[index2authOffset(tableIndex)] = auth;
+  _page_buffer[this->index2authOffset(tableIndex)] = auth;
   
   // Write user tag
+  unsigned long tagOffset = this->index2tagOffset(tableIndex);
   for(int byteNum = 0; byteNum < NOMINAL_TAG_LEN; byteNum++) {
-    _page_buffer[index2tagOffset(tableIndex) + byteNum] = tag_id[byteNum];
+    _page_buffer[tagOffset + byteNum] = tag_id[byteNum];
   }
   // Increase number of users on page
-  if(getNumUsersInPageBuffer() == 0) {
+  if(this->getNumUsersInPageBuffer() == 0) {
     // Add first user on page
     _page_buffer[userCountAddr+0] = 1;
     _page_buffer[userCountAddr+1] = 0;
@@ -104,6 +108,7 @@ int AccessTable::addUser(byte *tag_id, byte auth) {
     _page_buffer[userCountAddr+0] += 1;
   } 
   
+this->printPageBuffer();
   // Write page buffer to memory
   this->savePage(tableIndex);
   
@@ -120,10 +125,16 @@ unsigned int AccessTable::getNumUsersInPage(int pageNum) {
   unsigned int countLSB;
   unsigned int countMSB;
   unsigned int userCount = 0;
-  long userCountAddr;
+  unsigned long addr = pageNum;
 
-  userCountAddr = (pageNum << PAGE2ADDR_LSHIFT) + userCountAddr;
-  _spi_eeprom->read_byte_array(userCountAddr, userCountBuf, 2);
+  addr = (addr << PAGE2ADDR_LSHIFT) + userCountAddr;
+     // Serial.print(F("GetNumUsersInPage: Loading page at address 0x"));
+    //Serial.print(addr, HEX);
+  _spi_eeprom->read_byte_array(addr, userCountBuf, 2);
+    //  Serial.print(F(", content is LSB = "));
+    //Serial.print(userCountBuf[0]);
+    //  Serial.print(F(", MSB = "));
+   // Serial.println(userCountBuf[1]);
   countLSB = userCountBuf[0];
   countMSB = userCountBuf[1];
   // Manage empty pages (empty memory byte is 0xFF)
@@ -158,10 +169,18 @@ unsigned int AccessTable::getNumUsersInPageBuffer() {
   
   @return number of users
 **/
-unsigned int AccessTable::getNumUsers() {
-  unsigned int userCount = 0;
+unsigned long AccessTable::getNumUsers() {
+  unsigned long userCount = 0;
+  unsigned int countInPage;
   for(int i = 0; i < NUM_PAGES; i++) {
-    userCount += this->getNumUsersInPage(i);
+    countInPage = this->getNumUsersInPage(i);
+    if(countInPage) {
+      Serial.print(F("There are "));
+      Serial.print(countInPage);
+      Serial.print(F(" users in page "));
+      Serial.println(i);
+      userCount += countInPage;
+    }
   }
   return userCount;
 };
@@ -229,7 +248,7 @@ int AccessTable::getAuth(unsigned int tableIndex) {
     return -1;   
   }
   long address = index2authAddr(tableIndex);
-  if(_spi_eeprom->read(address) > 0) {
+  if(_spi_eeprom->read_byte(address) > 0) {
     return 1;
   }
   else {
@@ -273,16 +292,10 @@ int AccessTable::checkAuthMod(unsigned int tableIndex, byte auth) {
     return -1;   
   }
   
-  unsigned int relAddr = tableIndex >> 3;
+  unsigned long authAddr = this->index2authAddr(tableIndex);
   //Serial.print("-- Checking user auth at address ");
-  //Serial.print(authStartAddr + relAddr);
-  byte tableByte = EEPROM.read(authStartAddr + relAddr);
-  //Serial.print(", memory content is 0x");
-  //Serial.print(tableByte, HEX);
-  //Serial.print(", the mask used is 0x");
-  byte byteMask  = 1 << (tableIndex%8);
-  //Serial.print(byteMask, HEX);
-  byte curAuth = (tableByte & byteMask) > 0;
+  //Serial.print(authAddr);
+  byte curAuth = _spi_eeprom->read_byte(authAddr);
   //Serial.print(", user auth is currently ");
   //Serial.print(curAuth);
   if(auth == curAuth) {
@@ -304,16 +317,10 @@ int AccessTable::checkAuthMod(unsigned int tableIndex, byte auth) {
   @return 1 authorisation changed in table
 **/
 int AccessTable::setAuth(unsigned int tableIndex, byte auth) {
-  unsigned int relAddr = tableIndex >> 3;
+  unsigned long authAddr = this->index2authAddr(tableIndex);
+  byte curAuth = _spi_eeprom->read_byte(authAddr);
   //Serial.print("-- Setting user auth at address ");
-  //Serial.print(authStartAddr + relAddr);
-  byte tableByte = EEPROM.read(authStartAddr + relAddr);
-  //Serial.print(", memory content is 0x");
-  //Serial.print(tableByte, HEX);
-  //Serial.print(", the mask used is 0x");
-  byte byteMask  = 1 << (tableIndex%8);
-  //Serial.print(byteMask, HEX);
-  byte curAuth = (tableByte & byteMask) > 0;
+  //Serial.print(authAddr);
   //Serial.print(", user auth is currently ");
   //Serial.print(curAuth);
   if(auth == curAuth) {
@@ -324,10 +331,9 @@ int AccessTable::setAuth(unsigned int tableIndex, byte auth) {
   else {
     // Change authorisation (bitwise xor used)
     //Serial.print(", updating the auth byte with 0x");
-    tableByte = tableByte ^ byteMask;
-    //Serial.print(tableByte, HEX);
+    //Serial.print(auth, HEX);
+    _spi_eeprom->write(authAddr, auth);
     //Serial.println(", returning 1 (authorisation updated).");
-    EEPROM.write(authStartAddr + relAddr, tableByte);
     return 1;
   } 
 }
@@ -349,7 +355,7 @@ int AccessTable::getUserIndex(byte *tag_id, int num_bytes) {
   
   // Find this tag in EEPROM table
   for(curUser = 0; curUser < this->getNumUsers(); curUser++) {
-    _spi_eeprom.read_byte_array(index2tagAddr(curUser), userTag, num_bytes);
+    _spi_eeprom->read_byte_array(this->index2tagAddr(curUser), userTag, num_bytes);
     byteNum = 0;
     while(userTag[byteNum] == tag_id[byteNum] && \
           byteNum < num_bytes) {
@@ -382,7 +388,7 @@ unsigned long AccessTable::index2tagAddr(unsigned int tableIndex) {
 **/
 unsigned long AccessTable::index2authAddr(unsigned int tableIndex) {
   return this->index2pageAddr(tableIndex) + 
-         this->index2authOffset(unsigned int tableIndex);  
+         this->index2authOffset(tableIndex);  
 };
 
 /**
@@ -394,7 +400,8 @@ unsigned long AccessTable::index2authAddr(unsigned int tableIndex) {
 **/
 unsigned long AccessTable::index2pageAddr(unsigned int tableIndex) {
   // Build page address by left shifting the page number
-  return this->index2pageNum(tableIndex) << PAGE2ADDR_LSHIFT;
+  unsigned long page_num = this->index2pageNum(tableIndex);
+  return page_num << PAGE2ADDR_LSHIFT;
 };
 
 /**
@@ -406,7 +413,7 @@ unsigned long AccessTable::index2pageAddr(unsigned int tableIndex) {
 * @param   tableIndex   index of user
 * @return  address where user info is saved
 **/
-int AccessTable::index2pageNum(unsigned int tableIndex) {
+unsigned int AccessTable::index2pageNum(unsigned int tableIndex) {
   // Subsequent users on subsequent pages
   return tableIndex%NUM_PAGES;
 };
@@ -418,7 +425,7 @@ int AccessTable::index2pageNum(unsigned int tableIndex) {
 * @param   tableIndex   index of user
 * @return  tag offset
 **/
-byte AccessTable::index2authMask(unsigned int tableIndex) {
+unsigned long AccessTable::index2authMask(unsigned int tableIndex) {
   // For external EEPROM each user has its own authorisation address
   return 1;
 };
@@ -430,8 +437,8 @@ byte AccessTable::index2authMask(unsigned int tableIndex) {
 * @param   tableIndex   index of user
 * @return  tag offset
 **/
-byte AccessTable::index2tagOffset(unsigned int tableIndex) {
-  return tableIndex * NOMINAL_TAG_LEN;  
+unsigned long AccessTable::index2tagOffset(unsigned int tableIndex) {
+  return ((tableIndex & TAG_OFFSET_MASK) >> TAG_OFFSET_RSHIFT) * NOMINAL_TAG_LEN;  
 };
 
 /**
@@ -441,22 +448,38 @@ byte AccessTable::index2tagOffset(unsigned int tableIndex) {
 * @param   tableIndex   index of user 
 * @return  authorisation offset 
 **/
-byte AccessTable::index2authOffset(unsigned int tableIndex) {
-  return AUTH_PAGE_OFFSET + (tableIndex & TAG_OFFSET_MASK);  
+unsigned long AccessTable::index2authOffset(unsigned int tableIndex) {
+  return AUTH_PAGE_OFFSET + ((tableIndex & TAG_OFFSET_MASK) >> TAG_OFFSET_RSHIFT);  
 };
 
 /**
-* @details Loads a memory page into page buffer.
-* @param   tableIndex   user index or page number to load
+* @details Prints content of the page buffer.
 **/
-void loadPage(unsigned int tableIndex) {
-  _spi_eeprom->read_byte_array(index2pageAddr(tableIndex), _page_buffer, PAGE_SIZE);
+void AccessTable::printPageBuffer() {
+  for(int i = 0; i < PAGE_SIZE; i++) {
+    Serial.print(F("Page buffer address 0x"));
+    Serial.print(i, HEX);
+    Serial.print(F(" has byte 0x"));
+    Serial.println(_page_buffer[i], HEX);
+  }
 }
 
 /**
 * @details Loads a memory page into page buffer.
 * @param   tableIndex   user index or page number to load
 **/
-void savePage(unsigned int tableIndex) {
+void AccessTable::loadPage(unsigned int tableIndex) {
+      Serial.print(F("Loading page at address 0x"));
+    Serial.println(this->index2pageAddr(tableIndex), HEX);
+
+  _spi_eeprom->read_byte_array(this->index2pageAddr(tableIndex), _page_buffer, PAGE_SIZE);
+}
+
+/**
+* @details Loads a memory page into page buffer.
+* @param   tableIndex   user index or page number to load
+**/
+void AccessTable::savePage(unsigned int tableIndex) {
   _spi_eeprom->write(index2pageAddr(tableIndex), _page_buffer, PAGE_SIZE);
+  delay(6);
 }

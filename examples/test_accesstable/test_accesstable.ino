@@ -26,14 +26,24 @@ const int print_table = 1;
 const int check_auth = 1;
 
 // User tags
-const int list_size = 5;
-byte tag_list[list_size*4] = { 0xE5, 0x74, 0xCF, 0x28,
-                               0x8E, 0xE8, 0xF9, 0x55, 
-                               0x91, 0x49, 0xF9, 0x55,
-                               0x82, 0xC9, 0xF9, 0x55,
-                               0x93, 0xA6, 0xDF, 0xC7};
+const int list_size = 4;
 
-byte auth_list[list_size] = {1,0,1,0,0};
+typedef union tag_t{
+  unsigned long long_num;
+  byte byte_array[4];
+};
+tag_t set_tag;
+tag_t expected_tag;
+byte  set_auth;
+byte  expected_auth;
+
+// Timing variables
+unsigned long t_start, t_stop, t_sum;
+unsigned long t_diff, t_min = 100000, t_max = 0, user_t_max;
+float t_avg;
+
+// Function return argument
+int status;
 
 void setup() {
   // Setup serial communication  
@@ -44,9 +54,9 @@ void setup() {
 }
 
 void loop() {
-  int ini_num_users;
-  int num_users;
-  int table_index;
+  unsigned long ini_num_users;
+  unsigned long num_users;
+
   int test_ok = 1;
   
   // Wait for user input
@@ -56,9 +66,15 @@ void loop() {
   }
 
   // Report current table size
+  t_start = micros();
   ini_num_users = table.getNumUsers();
+  t_stop = micros();
   Serial.print(F("Initial number of users is "));
   Serial.println(ini_num_users);
+  Serial.print(F("Getting number of users took roughly "));
+  t_diff = t_stop - t_start;
+  Serial.print(t_diff);
+  Serial.println(F(" us."));
   
   // Clear table
   if(reset_memory) {
@@ -84,18 +100,30 @@ void loop() {
     }
   }
   if(print_table) {
-    table.print_table();
+    //table.print_table();
   }
   
   if(fill_table) {
     Serial.println(F("Adding users."));
+    // Set values for first user
+    set_tag.long_num = 0x55667788;
+    set_auth = 1;
     for(int i = 0; i < list_size; i++) {
       Serial.print(F("Adding user # "));
       Serial.println(i);
-      if(table.addUser(&tag_list[4*i], auth_list[i]) != 1) {
-        Serial.print(F("Error: user "));
-        Serial.print(i);
-        Serial.println(F(" already in table."));
+      t_start = micros();
+      status = table.addUser(set_tag.byte_array, set_auth);
+      t_stop = micros();
+      t_diff = t_stop - t_start;
+      t_sum += t_diff;
+      if(t_diff < t_min) {
+        t_min = t_diff;
+      }
+      if(t_diff > t_max) {
+        t_max = t_diff;
+      }
+      if(status < 0) {
+        Serial.print(F("Error: table was reported full."));
       }
       // Check if the number of users is correct
       num_users = table.getNumUsers();
@@ -107,7 +135,20 @@ void loop() {
         Serial.println(F(" users expected."));
         test_ok = 0;
       }
+      // Increment tag and authorisation values
+      set_tag.long_num++;
+      set_auth = !set_auth;
     }
+    t_avg = t_sum / num_users;
+    Serial.print(F("Adding users took roughly "));
+    t_diff = t_stop - t_start;
+    Serial.print(t_diff);
+    Serial.print(F(" us per user (min "));
+    Serial.print(t_min);
+    Serial.print(F(" us, max "));
+    Serial.print(t_max);
+    Serial.println(F(" us)."));
+    
     if(test_ok) {
       Serial.println(F("Ok: users were added."));
     }
@@ -118,18 +159,25 @@ void loop() {
   
   // Check if users are found and have the right authorisation
   if(check_auth) {
+    // Set values for first user
+    expected_tag.long_num = 0x55667788;
+    expected_auth = 1;
     num_users = table.getNumUsers();
     for(int i = 0; i < num_users; i++) {
-      if(table.getUserAuth(&tag_list[4*i]) != auth_list[i]) {
+      if(table.getUserAuth(expected_tag.byte_array) != expected_auth) {
         Serial.print(F("Error: user # "));
         Serial.print(i);
         Serial.println(F(" have wrong authorisation."));
         test_ok = 0;
       }
+      expected_tag.long_num++;
+      expected_auth = !set_auth;
     }
     // Check 3 bytes version of the function
+    expected_tag.long_num = 0x55667788;
+    expected_auth = 1;
     for(int i = 0; i < num_users; i++) {
-      if(table.getUserAuth(&tag_list[4*i], 3) != auth_list[i]) {
+      if(table.getUserAuth(expected_tag.byte_array, 3) != expected_auth) {
         Serial.print(F("Error: user # "));
         Serial.print(i);
         Serial.println(F(" have wrong authorisation by comparing 3 bytes."));

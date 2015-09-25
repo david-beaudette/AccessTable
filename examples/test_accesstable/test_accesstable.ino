@@ -26,9 +26,9 @@ const int print_table = 1;
 const int check_auth = 1;
 
 // User tags
-const int list_size = 4;
+const int list_size = 2100;
 
-typedef union tag_t{
+typedef union tag_t {
   unsigned long long_num;
   byte byte_array[4];
 };
@@ -171,7 +171,7 @@ void loop() {
         test_ok = 0;
       }
       expected_tag.long_num++;
-      expected_auth = !set_auth;
+      expected_auth = !expected_auth;
     }
     // Check 3 bytes version of the function
     expected_tag.long_num = 0x55667788;
@@ -183,6 +183,8 @@ void loop() {
         Serial.println(F(" have wrong authorisation by comparing 3 bytes."));
         test_ok = 0;
       }
+      expected_tag.long_num++;
+      expected_auth = !expected_auth;
     }
   }
   // Display test conclusion

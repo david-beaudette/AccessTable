@@ -18,10 +18,10 @@
 #define USERS_PER_PAGE    32 // Number of users per memory page
 #define MAX_USER_SIZE  16384 // Limit on total number of users
 
-#define TAG_OFFSET_MASK 0x1F  // Number of leftshift bits to obtain 
-                              // tag address from masked index
-#define TAG_OFFSET_RSHIFT  2  // Number of leftshift bits to obtain 
-                              // tag address from masked index
+#define TAG_OFFSET_MASK 0xFE00 // 
+#define TAG_OFFSET_RSHIFT  9  // Number of right shift bits to obtain 
+                              // tag offset from masked index 
+                              // (corresponds to number of pages)
 #define AUTH_PAGE_OFFSET 0x80 // Offset on a page where authorisation
                               // bytes begin
 #define PAGE2ADDR_LSHIFT   8  // Number of leftshift bits to obtain 
@@ -66,6 +66,7 @@ class AccessTable {
     
     byte _page_buffer[PAGE_SIZE];
     SPIEEPROM *_spi_eeprom;
+    unsigned int _num_users;
 };
 
 

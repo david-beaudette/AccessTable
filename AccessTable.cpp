@@ -7,7 +7,7 @@
 #include "AccessTable.h"
 
 /**
-  SPI EEPROM constructor.
+  SPI EEPROM constructor. Always call print_table or getNumUsers at setup.
   
   @param  pin_num  SPI slave select pin for EEPROM
 **/
@@ -15,7 +15,8 @@ AccessTable::AccessTable(int pin_num) {
   _spi_eeprom = new SPIEEPROM;
   _spi_eeprom->setup(pin_num);
   _spi_eeprom->protect_none();
-  _num_users = this->getNumUsers();
+  _num_users = 0;
+  _num_users_read = 0;
 }
 
 /**
@@ -29,7 +30,7 @@ AccessTable::AccessTable(int pin_num) {
 **/
 int AccessTable::getUserAuth(byte *tag_id, int num_bytes) {
   // Check for user tag in table
-  unsigned int tableIndex = this->getUserIndex(tag_id, num_bytes);
+  int tableIndex = this->getUserIndex(tag_id, num_bytes);
 
   return this->getAuth(tableIndex);
 }
@@ -45,7 +46,7 @@ int AccessTable::getUserAuth(byte *tag_id, int num_bytes) {
 **/
 int AccessTable::setUserAuth(byte *tag_id, byte auth) {
   // Check for user tag in table
-  unsigned int tableIndex = this->getUserIndex(tag_id);
+  int tableIndex = this->getUserIndex(tag_id);
  
   int authCheckStatus = this->checkAuthMod(tableIndex, auth);
   if(authCheckStatus < 1) {
@@ -173,16 +174,23 @@ unsigned int AccessTable::getNumUsersInPageBuffer() {
 **/
 unsigned long AccessTable::getNumUsers() {
   unsigned long userCount = 0;
-  unsigned int countInPage;
-  for(int i = 0; i < NUM_PAGES; i++) {
-    countInPage = this->getNumUsersInPage(i);
-    if(countInPage) {
-      /*Serial.print(F("There are "));
-      Serial.print(countInPage);
-      Serial.print(F(" users in page "));
-      Serial.println(i);*/
-      userCount += countInPage;
+  if(_num_users_read) {
+    userCount = _num_users;
+  }
+  else {
+    unsigned int countInPage;
+    for(int i = 0; i < NUM_PAGES; i++) {
+      countInPage = this->getNumUsersInPage(i);
+      if(countInPage) {
+        /*Serial.print(F("There are "));
+        Serial.print(countInPage);
+        Serial.print(F(" users in page "));
+        Serial.println(i);*/
+        userCount += countInPage;
+      }
     }
+    _num_users = userCount;
+    _num_users_read = 1;
   }
   return userCount;
 };
@@ -204,7 +212,7 @@ void AccessTable::print_table() {
   unsigned int numUsers;
   Serial.println(F("Printing access table content."));
   Serial.print(F("There are "));
-  Serial.print(_num_users);
+  Serial.print(this->getNumUsers());
   Serial.println(F(" users registered."));
   // Display users on each memory page
   for(int pageNum = 0; pageNum < NUM_PAGES; pageNum++) {
@@ -245,7 +253,7 @@ void AccessTable::print_table() {
            0 user unauthorised\n
            1 user authorised
 **/
-int AccessTable::getAuth(unsigned int tableIndex) {
+int AccessTable::getAuth(int tableIndex) {
   if(tableIndex < 0 || tableIndex >= MAX_USER_SIZE) {
     return -1;   
   }

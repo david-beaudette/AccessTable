@@ -46,7 +46,7 @@ class AccessTable {
     int setNumUsers(unsigned int numUsers);
     int setAuth(unsigned int tableIndex, byte auth);
     int checkAuthMod(unsigned int tableIndex, byte auth);
-    int getAuth(unsigned int tableIndex);
+    int getAuth(int tableIndex);
     int getAuthInPageBuffer(unsigned int userIdx);
     int getUserIndex(byte *tag_id, int num_bytes = NOMINAL_TAG_LEN);
     
@@ -67,6 +67,7 @@ class AccessTable {
     byte _page_buffer[PAGE_SIZE];
     SPIEEPROM *_spi_eeprom;
     unsigned int _num_users;
+    byte _num_users_read;
 };
 
 

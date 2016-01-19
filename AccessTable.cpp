@@ -232,9 +232,6 @@ void AccessTable::print_table() {
       for(int j = 0; j < NOMINAL_TAG_LEN; j++) {
         cur_byte = _page_buffer[i*NOMINAL_TAG_LEN + j];
         Serial.print(cur_byte, HEX);
-        if(j < (NOMINAL_TAG_LEN-1)) {
-          Serial.print(F(", "));
-        }
       }
       Serial.print(F(" (auth = "));
       Serial.print(getAuthInPageBuffer(i));
@@ -302,18 +299,19 @@ int AccessTable::checkAuthMod(unsigned int tableIndex, byte auth) {
     return -1;   
   }
   unsigned long authAddr = this->index2authAddr(tableIndex);
-  //Serial.print("-- Checking user auth at address ");
+  //Serial.print(F("-- Checking user auth at address "));
   //Serial.print(authAddr);
   byte curAuth = _spi_eeprom->read_byte(authAddr);
-  //Serial.print(", user auth is currently ");
+  //Serial.print(F(", user auth is currently "));
   //Serial.print(curAuth);
   if(auth == curAuth) {
     // Same authorisation
-    //Serial.println(", returning 0 (no change).");
+    //Serial.println(F(", returning 0 (no change)."));
     return 0;
   }
   else {
-    // Change authorisation (bitwise xor used)
+    // Change authorisation
+    //Serial.println(F(", returning 1 (modification)."));
     return 1;
   } 
 }
@@ -326,25 +324,9 @@ int AccessTable::checkAuthMod(unsigned int tableIndex, byte auth) {
   @return 1 authorisation changed in table
 **/
 int AccessTable::setAuth(unsigned int tableIndex, byte auth) {
-  unsigned long authAddr = this->index2authAddr(tableIndex);
-  byte curAuth = _spi_eeprom->read_byte(authAddr);
-  //Serial.print("-- Setting user auth at address ");
-  //Serial.print(authAddr);
-  //Serial.print(", user auth is currently ");
-  //Serial.print(curAuth);
-  if(auth == curAuth) {
-    // No change
-    //Serial.println(", returning 0 (no change).");
-    return 0;
-  }
-  else {
-    // Change authorisation (bitwise xor used)
-    //Serial.print(", updating the auth byte with 0x");
-    //Serial.print(auth, HEX);
-    _spi_eeprom->write(authAddr, auth);
-    //Serial.println(", returning 1 (authorisation updated).");
-    return 1;
-  } 
+  // Write authorisation bit
+  _page_buffer[this->index2authOffset(tableIndex)] = auth;
+  return 1;  
 }
 
 /**
